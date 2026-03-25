@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Camera Analysis</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      font-family: Arial, sans-serif;
+    }
+
+    body {
+      margin: 0;
+      background: #f7f4f8;
+      color: #222;
+      min-height: 100vh;
+      padding: 24px;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .card {
+      background: white;
+      border-radius: 18px;
+      padding: 24px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+      margin-bottom: 20px;
+    }
+
+    h1, h2 {
+      margin-top: 0;
+    }
+
+    .subtitle {
+      color: #666;
+      margin-bottom: 20px;
+      line-height: 1.5;
+    }
+
+    video, canvas, img {
+      width: 100%;
+      max-width: 420px;
+      border-radius: 16px;
+      display: block;
+      background: #eee;
+    }
+
+    .media-wrap {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 24px;
+      align-items: flex-start;
+    }
+
+    .controls {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 16px;
+    }
+
+    button, .upload-label {
+      border: none;
+      background: #c45d9c;
+      color: white;
+      padding: 12px 16px;
+      border-radius: 12px;
+      cursor: pointer;
+      font-size: 15px;
+      text-decoration: none;
+      display: inline-block;
+    }
+
+    button.secondary, .upload-label.secondary {
+      background: #ececec;
+      color: #222;
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    input[type="file"] {
+      display: none;
+    }
+
+    .results-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 14px;
+      margin-top: 18px;
+    }
+
+    .result-box {
+      background: #fff8fc;
+      border: 2px solid #f0d4e6;
+      border-radius: 14px;
+      padding: 16px;
+    }
+
+    .tag {
+      display: inline-block;
+      background: #f3d9e8;
+      color: #7a3560;
+      padding: 8px 12px;
+      border-radius: 999px;
+      margin: 6px 6px 0 0;
+      font-size: 14px;
+    }
+
+    .note {
+      font-size: 14px;
+      color: #666;
+      line-height: 1.5;
+    }
+
+    pre {
+      background: #f6f6f6;
+      padding: 16px;
+      border-radius: 12px;
+      overflow: auto;
+      font-size: 14px;
+    }
+
+    #previewImage {
+      display: none;
+    }
+
+    #analysisSection {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <h1>Photo Upload / Camera Step</h1>
+      <p class="subtitle">
+        Take or upload a photo in even lighting so the app can estimate general tone and skin traits.
+        This is only a cosmetic estimate, not a medical diagnosis.
+      </p>
+
+      <div class="media-wrap">
+        <div>
+          <video id="video" autoplay playsinline></video>
+          <img id="previewImage" alt="Captured preview" />
+          <canvas id="canvas" style="display:none;"></canvas>
+
+          <div class="controls">
+            <button id="startCameraBtn">Start Camera</button>
+            <button id="captureBtn" disabled>Capture Photo</button>
+            <label for="uploadInput" class="upload-label secondary">Upload Photo</label>
+            <input type="file" id="uploadInput" accept="image/*" />
+          </div>
+        </div>
+
+        <div style="flex:1; min-width:260px;">
+          <h2>Tips</h2>
+          <div class="note">
+            <p>For the best estimate:</p>
+            <p>• Use bright, even lighting</p>
+            <p>• Face the camera directly</p>
+            <p>• Avoid heavy shadows</p>
+            <p>• Avoid filters if possible</p>
+            <p>• Minimal makeup gives more accurate skin analysis</p>
+          </div>
+
+          <div class="controls" style="margin-top:20px;">
+            <button id="analyzeBtn" disabled>Analyze Photo</button>
+            <button id="continueBtn" class="secondary" disabled>Continue to Recommendations</button>
+            <button id="backBtn" class="secondary">Back to Quiz</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="analysisSection" class="card">
+      <h2>Estimated Photo Analysis</h2>
+
+      <div class="results-grid">
+        <div class="result-box">
+          <strong>Tone Band</strong>
+          <div id="toneBandText" style="margin-top:8px;"></div>
+        </div>
+
+        <div class="result-box">
+          <strong>Undertone</strong>
+          <div id="undertoneText" style="margin-top:8px;"></div>
+        </div>
+
+        <div class="result-box">
+          <strong>Shine Level</strong>
+          <div id="shineText" style="margin-top:8px;"></div>
+        </div>
+
+        <div class="result-box">
+          <strong>Estimated Dryness</strong>
+          <div id="drynessText" style="margin-top:8px;"></div>
+        </div>
+
+        <div class="result-box">
+          <strong>Redness</strong>
+          <div id="rednessText" style="margin-top:8px;"></div>
+        </div>
+
+        <div class="result-box">
+          <strong>Confidence</strong>
+          <div id="confidenceText" style="margin-top:8px;"></div>
+        </div>
+      </div>
+
+      <div style="margin-top:18px;">
+        <strong>Analysis Tags:</strong>
+        <div id="analysisTags"></div>
+      </div>
+
+      <h3 style="margin-top:22px;">Saved Result Object</h3>
+      <pre id="savedResultBox"></pre>
+    </div>
+  </div>
+
+  <script>
+    const video = document.getElementById("video");
+    const canvas = document.getElementById("canvas");
+    const previewImage = document.getElementById("previewImage");
+    const startCameraBtn = document.getElementById("startCameraBtn");
+    const captureBtn = document.getElementById("captureBtn");
+    const uploadInput = document.getElementById("uploadInput");
+    const analyzeBtn = document.getElementById("analyzeBtn");
+    const continueBtn = document.getElementById("continueBtn");
+    const backBtn = document.getElementById("backBtn");
+    const analysisSection = document.getElementById("analysisSection");
+
+    let stream = null;
+    let currentImageDataUrl = null;
+
+    function getQuizResult() {
+      const saved = localStorage.getItem("skinQuizResult");
+      if (!saved) {
+        alert("No quiz result found. Please take the quiz first.");
+        window.location.href = "index.html";
+        return null;
+      }
+
+      try {
+        return JSON.parse(saved);
+      } catch (error) {
+        alert("Could not load quiz result.");
+        window.location.href = "index.html";
+        return null;
+      }
+    }
+
+    async function startCamera() {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "user" },
+          audio: false
+        });
+
+        video.srcObject = stream;
+        captureBtn.disabled = false;
+      } catch (error) {
+        alert("Camera access was not available. You can still upload a photo instead.");
+        console.error(error);
+      }
+    }
+
+    function stopCamera() {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+        stream = null;
+      }
+    }
+
+    function showImage(dataUrl) {
+      currentImageDataUrl = dataUrl;
+      previewImage.src = dataUrl;
+      previewImage.style.display = "block";
+      video.style.display = "none";
+      analyzeBtn.disabled = false;
+    }
+
+    function capturePhoto() {
+      if (!video.videoWidth || !video.videoHeight) return;
+
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      const dataUrl = canvas.toDataURL("image/png");
+      showImage(dataUrl);
+      stopCamera();
+    }
+
+    function handleUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        showImage(e.target.result);
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function clamp(value, min, max) {
+      return Math.max(min, Math.min(max, value));
+    }
+
+    function average(arr) {
+      if (!arr.length) return 0;
+      return arr.reduce((sum, num) => sum + num, 0) / arr.length;
+    }
+
+    function analyzeImage() {
+      if (!currentImageDataUrl) return;
+
+      const img = new Image();
+      img.onload = function() {
+        const sampleCanvas = document.createElement("canvas");
+        const ctx = sampleCanvas.getContext("2d");
+
+        const maxSize = 300;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > maxSize || height > maxSize) {
+          const ratio = Math.min(maxSize / width, maxSize / height);
+          width = Math.round(width * ratio);
+          height = Math.round(height * ratio);
+        }
+
+        sampleCanvas.width = width;
+        sampleCanvas.height = height;
+        ctx.drawImage(img, 0, 0, width, height);
+
+        const startX = Math.floor(width * 0.25);
+        const endX = Math.floor(width * 0.75);
+        const startY = Math.floor(height * 0.2);
+        const endY = Math.floor(height * 0.8);
+
+        const imageData = ctx.getImageData(startX, startY, endX - startX, endY - startY);
+        const data = imageData.data;
+
+        const reds = [];
+        const greens = [];
+        const blues = [];
+        const brightnessValues = [];
+
+        for (let i = 0; i < data.length; i += 4) {
+          const r = data[i];
+          const g = data[i + 1];
+          const b = data[i + 2];
+
+          const brightness = (r + g + b) / 3;
+
+          // skip very dark and very bright pixels to reduce noise
+          if (brightness < 35 || brightness > 245) continue;
+
+          reds.push(r);
+          greens.push(g);
+          blues.push(b);
+          brightnessValues.push(brightness);
+        }
+
+        const avgR = average(reds);
+        const avgG = average(greens);
+        const avgB = average(blues);
+        const avgBrightness = average(brightnessValues);
+
+        const maxChannel = Math.max(avgR, avgG, avgB);
+        const minChannel = Math.min(avgR, avgG, avgB);
+        const channelSpread = maxChannel - minChannel;
+
+        let toneBand = "medium";
+        if (avgBrightness < 85) {
+          toneBand = "deep";
+        } else if (avgBrightness < 120) {
+          toneBand = "tan";
+        } else if (avgBrightness < 165) {
+          toneBand = "medium";
+        } else {
+          toneBand = "light";
+        }
+
+        let undertone = "neutral";
+        if (avgR > avgB + 12 && avgG > avgB) {
+          undertone = "warm";
+        } else if (avgB > avgR + 10) {
+          undertone = "cool";
+        }
+
+        const rednessScore = clamp((avgR - ((avgG + avgB) / 2)) / 40, 0, 1);
+        const shineScore = clamp((avgBrightness - 110) / 90, 0, 1);
+        const drynessScore = clamp((channelSpread - 10) / 45, 0, 1);
+
+        const lightingPenalty =
+          avgBrightness < 55 || avgBrightness > 220 ? 0.25 : 0;
+
+        const confidence = clamp(
+          0.85 - lightingPenalty - Math.abs(0.5 - shineScore) * 0.15,
+          0.35,
+          0.95
+        );
+
+        const analysis = {
+          toneBand,
+          undertone,
+          shineScore: Number(shineScore.toFixed(2)),
+          drynessScore: Number(drynessScore.toFixed(2)),
+          rednessScore: Number(rednessScore.toFixed(2)),
+          confidence: Number(confidence.toFixed(2))
+        };
+
+        saveAnalysisToLocalStorage(analysis);
+        renderAnalysis(analysis);
+      };
+
+      img.src = currentImageDataUrl;
+    }
+
+    function saveAnalysisToLocalStorage(analysis) {
+      const quizResult = getQuizResult();
+      if (!quizResult) return;
+
+      const updatedResult = {
+        ...quizResult,
+        cameraAnalysis: analysis,
+        toneBand: analysis.toneBand,
+        undertone: analysis.undertone
+      };
+
+      localStorage.setItem("skinQuizResult", JSON.stringify(updatedResult));
+    }
+
+    function renderAnalysis(analysis) {
+      analysisSection.style.display = "block";
+      continueBtn.disabled = false;
+
+      document.getElementById("toneBandText").textContent = capitalize(analysis.toneBand);
+      document.getElementById("undertoneText").textContent = capitalize(analysis.undertone);
+      document.getElementById("shineText").textContent = scoreToLabel(analysis.shineScore);
+      document.getElementById("drynessText").textContent = scoreToLabel(analysis.drynessScore);
+      document.getElementById("rednessText").textContent = scoreToLabel(analysis.rednessScore);
+      document.getElementById("confidenceText").textContent = `${Math.round(analysis.confidence * 100)}%`;
+
+      const tagsContainer = document.getElementById("analysisTags");
+      tagsContainer.innerHTML = "";
+
+      const tags = [
+        `Tone: ${capitalize(analysis.toneBand)}`,
+        `Undertone: ${capitalize(analysis.undertone)}`,
+        `Confidence: ${Math.round(analysis.confidence * 100)}%`
+      ];
+
+      if (analysis.shineScore > 0.6) tags.push("Higher shine");
+      if (analysis.drynessScore > 0.6) tags.push("Possible dryness");
+      if (analysis.rednessScore > 0.45) tags.push("Visible redness");
+
+      tags.forEach(tagText => {
+        const tag = document.createElement("span");
+        tag.className = "tag";
+        tag.textContent = tagText;
+        tagsContainer.appendChild(tag);
+      });
+
+      const savedResult = JSON.parse(localStorage.getItem("skinQuizResult"));
+      document.getElementById("savedResultBox").textContent = JSON.stringify(savedResult, null, 2);
+    }
+
+    function scoreToLabel(score) {
+      if (score < 0.34) return "Low";
+      if (score < 0.67) return "Medium";
+      return "High";
+    }
+
+    function capitalize(value) {
+      return value.charAt(0).toUpperCase() + value.slice(1);
+    }
+
+    startCameraBtn.addEventListener("click", startCamera);
+    captureBtn.addEventListener("click", capturePhoto);
+    uploadInput.addEventListener("change", handleUpload);
+
+    analyzeBtn.addEventListener("click", analyzeImage);
+
+    continueBtn.addEventListener("click", () => {
+      window.location.href = "recommendations.html";
+    });
+
+    backBtn.addEventListener("click", () => {
+      stopCamera();
+      window.location.href = "index.html";
+    });
+
+    window.addEventListener("beforeunload", stopCamera);
+    getQuizResult();
+  </script>
+</body>
+</html>

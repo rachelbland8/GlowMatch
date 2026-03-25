@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Skin Quiz</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      font-family: Arial, sans-serif;
+    }
+
+    body {
+      margin: 0;
+      background: #f7f4f8;
+      color: #222;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .quiz-container {
+      width: 100%;
+      max-width: 650px;
+      background: white;
+      border-radius: 18px;
+      padding: 28px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+    }
+
+    h1 {
+      text-align: center;
+      margin-top: 0;
+      margin-bottom: 10px;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: #666;
+      margin-bottom: 24px;
+    }
+
+    .progress-wrapper {
+      width: 100%;
+      height: 12px;
+      background: #eee;
+      border-radius: 999px;
+      overflow: hidden;
+      margin-bottom: 25px;
+    }
+
+    .progress-bar {
+      height: 100%;
+      width: 0%;
+      background: #d18cb7;
+      transition: width 0.3s ease;
+    }
+
+    .question-number {
+      font-size: 14px;
+      color: #777;
+      margin-bottom: 8px;
+    }
+
+    .question-text {
+      font-size: 22px;
+      font-weight: bold;
+      margin-bottom: 22px;
+      line-height: 1.35;
+    }
+
+    .options {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .option-btn,
+    .checkbox-option {
+      width: 100%;
+      padding: 14px 16px;
+      border: 2px solid #e6d8e3;
+      background: #fff;
+      border-radius: 12px;
+      cursor: pointer;
+      text-align: left;
+      font-size: 16px;
+      transition: 0.2s ease;
+    }
+
+    .option-btn:hover,
+    .checkbox-option:hover {
+      border-color: #d18cb7;
+      background: #fff8fc;
+    }
+
+    .option-btn.selected,
+    .checkbox-option.selected {
+      border-color: #c45d9c;
+      background: #fdebf5;
+    }
+
+    .checkbox-option input {
+      margin-right: 10px;
+    }
+
+    .nav-buttons {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 28px;
+    }
+
+    .nav-buttons button {
+      flex: 1;
+      padding: 14px;
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    #prevBtn {
+      background: #ececec;
+    }
+
+    #nextBtn {
+      background: #c45d9c;
+      color: white;
+    }
+
+    #nextBtn:disabled {
+      background: #d8bfd0;
+      cursor: not-allowed;
+    }
+
+    .result-box {
+      display: none;
+    }
+
+    .result-box h2 {
+      margin-top: 0;
+    }
+
+    .result-card {
+      background: #fff8fc;
+      border: 2px solid #f0d4e6;
+      border-radius: 14px;
+      padding: 18px;
+      margin: 16px 0;
+    }
+
+    .tag {
+      display: inline-block;
+      background: #f3d9e8;
+      color: #7a3560;
+      padding: 8px 12px;
+      border-radius: 999px;
+      margin: 6px 6px 0 0;
+      font-size: 14px;
+    }
+
+    pre {
+      background: #f6f6f6;
+      padding: 16px;
+      border-radius: 12px;
+      overflow: auto;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div class="quiz-container">
+    <div id="quizScreen">
+      <h1>Skin Profile Quiz</h1>
+      <p class="subtitle">Answer a few questions to help personalize skincare and makeup recommendations.</p>
+
+      <div class="progress-wrapper">
+        <div class="progress-bar" id="progressBar"></div>
+      </div>
+
+      <div class="question-number" id="questionNumber"></div>
+      <div class="question-text" id="questionText"></div>
+      <div class="options" id="optionsContainer"></div>
+
+      <div class="nav-buttons">
+        <button id="prevBtn">Back</button>
+        <button id="nextBtn" disabled>Next</button>
+      </div>
+    </div>
+
+    <div id="resultScreen" class="result-box">
+      <h2>Your Skin Profile</h2>
+      <div class="result-card">
+        <p><strong>Primary Skin Type:</strong> <span id="primaryType"></span></p>
+        <p><strong>Sensitivity Level:</strong> <span id="sensitivityLevel"></span></p>
+        <p><strong>Requested Category:</strong> <span id="requestedCategory"></span></p>
+        <p><strong>Finish Preference:</strong> <span id="finishPreference"></span></p>
+        <p><strong>Coverage Preference:</strong> <span id="coveragePreference"></span></p>
+        <p><strong>Fragrance Preference:</strong> <span id="fragrancePreference"></span></p>
+        <p><strong>Budget:</strong> <span id="budgetRange"></span></p>
+      </div>
+
+      <div>
+        <strong>Skin Concerns:</strong>
+        <div id="concernTags"></div>
+      </div>
+
+      <h3>Result Object</h3>
+      <pre id="resultJSON"></pre>
+    </div>
+  </div>
+
+  <script>
+    const questions = [
+      {
+        id: "feel_after_washing",
+        type: "single",
+        question: "How does your skin usually feel a few hours after washing it?",
+        options: [
+          { text: "Very oily", scores: { oily: 2 } },
+          { text: "Oily in some places, dry in others", scores: { combination: 2 } },
+          { text: "Comfortable and balanced", scores: { normal: 2 } },
+          { text: "Tight or dry", scores: { dry: 2 } }
+        ]
+      },
+      {
+        id: "shine_level",
+        type: "single",
+        question: "How often do you notice shine on your face?",
+        options: [
+          { text: "Almost always", scores: { oily: 2 } },
+          { text: "Mostly in my T-zone", scores: { combination: 2 } },
+          { text: "Rarely", scores: { dry: 1, normal: 1 } }
+        ]
+      },
+      {
+        id: "pore_visibility",
+        type: "single",
+        question: "How visible are your pores?",
+        options: [
+          { text: "Large and noticeable all over", scores: { oily: 2 } },
+          { text: "Mostly on my nose and forehead", scores: { combination: 2 } },
+          { text: "Small or barely noticeable", scores: { dry: 1, normal: 1 } }
+        ]
+      },
+      {
+        id: "flaky_or_rough",
+        type: "single",
+        question: "How often does your skin feel flaky or rough?",
+        options: [
+          { text: "Often", scores: { dry: 2 } },
+          { text: "Sometimes in certain spots", scores: { dry: 1, combination: 1 } },
+          { text: "Rarely", scores: { oily: 1, normal: 1 } }
+        ]
+      },
+      {
+        id: "product_reaction",
+        type: "single",
+        question: "Does your skin react easily to products?",
+        options: [
+          { text: "Yes, often burns, stings, or gets red", scores: { sensitive: 3 } },
+          { text: "Sometimes", scores: { sensitive: 1 } },
+          { text: "Rarely", scores: { sensitive: 0 } }
+        ]
+      },
+      {
+        id: "concerns",
+        type: "multi",
+        question: "What are your top skin concerns? Select all that apply.",
+        options: [
+          { text: "Acne / breakouts", value: "acne" },
+          { text: "Redness", value: "redness" },
+          { text: "Dryness", value: "dryness" },
+          { text: "Dark spots", value: "dark_spots" },
+          { text: "Texture", value: "texture" },
+          { text: "Large pores", value: "large_pores" },
+          { text: "Dullness", value: "dullness" },
+          { text: "Fine lines", value: "fine_lines" }
+        ]
+      },
+      {
+        id: "shopping_for",
+        type: "singleValue",
+        question: "What are you shopping for today?",
+        options: [
+          { text: "Skincare", value: "skincare" },
+          { text: "Makeup", value: "makeup" },
+          { text: "Both", value: "both" }
+        ]
+      },
+      {
+        id: "product_category",
+        type: "singleValue",
+        question: "Which product category do you want recommendations for?",
+        options: [
+          { text: "Cleanser", value: "cleanser" },
+          { text: "Moisturizer", value: "moisturizer" },
+          { text: "SPF", value: "spf" },
+          { text: "Serum", value: "serum" },
+          { text: "Foundation", value: "foundation" },
+          { text: "Concealer", value: "concealer" },
+          { text: "Primer", value: "primer" },
+          { text: "Blush", value: "blush" }
+        ]
+      },
+      {
+        id: "finish_preference",
+        type: "singleValue",
+        question: "What finish do you prefer?",
+        options: [
+          { text: "Matte", value: "matte" },
+          { text: "Natural", value: "natural" },
+          { text: "Dewy", value: "dewy" }
+        ]
+      },
+      {
+        id: "coverage_preference",
+        type: "singleValue",
+        question: "How much coverage do you want?",
+        options: [
+          { text: "Sheer", value: "sheer" },
+          { text: "Medium", value: "medium" },
+          { text: "Full", value: "full" }
+        ]
+      },
+      {
+        id: "fragrance_preference",
+        type: "singleValue",
+        question: "Do you prefer fragrance-free products?",
+        options: [
+          { text: "Yes", value: "fragrance_free" },
+          { text: "No preference", value: "no_preference" }
+        ]
+      },
+      {
+        id: "budget",
+        type: "singleValue",
+        question: "What is your budget range?",
+        options: [
+          { text: "Under $15", value: "under_15" },
+          { text: "$15 - $30", value: "15_30" },
+          { text: "$30 - $50", value: "30_50" },
+          { text: "$50+", value: "50_plus" }
+        ]
+      }
+    ];
+
+    let currentQuestionIndex = 0;
+
+    const answers = {
+      scoreAnswers: {},
+      selectedConcerns: [],
+      shoppingFor: null,
+      productCategory: null,
+      finishPreference: null,
+      coveragePreference: null,
+      fragrancePreference: null,
+      budget: null
+    };
+
+    const quizScreen = document.getElementById("quizScreen");
+    const resultScreen = document.getElementById("resultScreen");
+    const questionNumber = document.getElementById("questionNumber");
+    const questionText = document.getElementById("questionText");
+    const optionsContainer = document.getElementById("optionsContainer");
+    const progressBar = document.getElementById("progressBar");
+    const prevBtn = document.getElementById("prevBtn");
+    const nextBtn = document.getElementById("nextBtn");
+
+    function renderQuestion() {
+      const question = questions[currentQuestionIndex];
+      questionNumber.textContent = `Question ${currentQuestionIndex + 1} of ${questions.length}`;
+      questionText.textContent = question.question;
+      optionsContainer.innerHTML = "";
+
+      const progressPercent = ((currentQuestionIndex) / questions.length) * 100;
+      progressBar.style.width = `${progressPercent}%`;
+
+      prevBtn.style.display = currentQuestionIndex === 0 ? "none" : "block";
+      nextBtn.textContent = currentQuestionIndex === questions.length - 1 ? "See Results" : "Next";
+      nextBtn.disabled = !isQuestionAnswered(question);
+
+      if (question.type === "single" || question.type === "singleValue") {
+        question.options.forEach((option, index) => {
+          const button = document.createElement("button");
+          button.className = "option-btn";
+
+          const selectedIndex = answers.scoreAnswers[question.id];
+          const selectedValue = answers[mapQuestionIdToAnswerField(question.id)];
+
+          if (
+            (question.type === "single" && selectedIndex === index) ||
+            (question.type === "singleValue" && selectedValue === option.value)
+          ) {
+            button.classList.add("selected");
+          }
+
+          button.textContent = option.text;
+          button.addEventListener("click", () => {
+            if (question.type === "single") {
+              answers.scoreAnswers[question.id] = index;
+            } else {
+              const field = mapQuestionIdToAnswerField(question.id);
+              answers[field] = option.value;
+            }
+            renderQuestion();
+          });
+
+          optionsContainer.appendChild(button);
+        });
+      }
+
+      if (question.type === "multi") {
+        const selectedValues = answers.selectedConcerns;
+
+        question.options.forEach((option) => {
+          const label = document.createElement("label");
+          label.className = "checkbox-option";
+
+          if (selectedValues.includes(option.value)) {
+            label.classList.add("selected");
+          }
+
+          const checkbox = document.createElement("input");
+          checkbox.type = "checkbox";
+          checkbox.checked = selectedValues.includes(option.value);
+
+          checkbox.addEventListener("change", () => {
+            if (checkbox.checked) {
+              if (!answers.selectedConcerns.includes(option.value)) {
+                answers.selectedConcerns.push(option.value);
+              }
+            } else {
+              answers.selectedConcerns = answers.selectedConcerns.filter(
+                (value) => value !== option.value
+              );
+            }
+            renderQuestion();
+          });
+
+          const span = document.createElement("span");
+          span.textContent = option.text;
+
+          label.appendChild(checkbox);
+          label.appendChild(span);
+          optionsContainer.appendChild(label);
+        });
+      }
+    }
+
+    function mapQuestionIdToAnswerField(questionId) {
+      const mapping = {
+        shopping_for: "shoppingFor",
+        product_category: "productCategory",
+        finish_preference: "finishPreference",
+        coverage_preference: "coveragePreference",
+        fragrance_preference: "fragrancePreference",
+        budget: "budget"
+      };
+      return mapping[questionId];
+    }
+
+    function isQuestionAnswered(question) {
+      if (question.type === "single") {
+        return answers.scoreAnswers[question.id] !== undefined;
+      }
+
+      if (question.type === "singleValue") {
+        const field = mapQuestionIdToAnswerField(question.id);
+        return !!answers[field];
+      }
+
+      if (question.type === "multi") {
+        return answers.selectedConcerns.length > 0;
+      }
+
+      return false;
+    }
+
+    function calculateResults() {
+      const scores = {
+        oily: 0,
+        dry: 0,
+        combination: 0,
+        normal: 0,
+        sensitive: 0
+      };
+
+      for (const question of questions) {
+        if (question.type === "single") {
+          const selectedIndex = answers.scoreAnswers[question.id];
+          if (selectedIndex !== undefined) {
+            const selectedOption = question.options[selectedIndex];
+            for (const category in selectedOption.scores) {
+              scores[category] += selectedOption.scores[category];
+            }
+          }
+        }
+      }
+
+      const baseSkinTypes = ["oily", "dry", "combination", "normal"];
+      let primarySkinType = baseSkinTypes[0];
+
+      for (let i = 1; i < baseSkinTypes.length; i++) {
+        const currentType = baseSkinTypes[i];
+        if (scores[currentType] > scores[primarySkinType]) {
+          primarySkinType = currentType;
+        }
+      }
+
+      let sensitivityLevel = "Low";
+      if (scores.sensitive >= 3) {
+        sensitivityLevel = "High";
+      } else if (scores.sensitive >= 1) {
+        sensitivityLevel = "Moderate";
+      }
+
+      const resultObject = {
+        primarySkinType,
+        scores,
+        sensitivityLevel,
+        concerns: answers.selectedConcerns,
+        shoppingFor: answers.shoppingFor,
+        requestedCategory: answers.productCategory,
+        finishPreference: answers.finishPreference,
+        coveragePreference: answers.coveragePreference,
+        fragrancePreference: answers.fragrancePreference,
+        budget: answers.budget
+      };
+
+      return resultObject;
+    }
+
+    function formatLabel(value) {
+      if (!value) return "Not selected";
+
+      return value
+        .replaceAll("_", " ")
+        .replace(/\b\w/g, (char) => char.toUpperCase());
+    }
+
+    prevBtn.addEventListener("click", () => {
+      if (currentQuestionIndex > 0) {
+        currentQuestionIndex--;
+        renderQuestion();
+      }
+    });
+
+    nextBtn.addEventListener("click", () => {
+      const currentQuestion = questions[currentQuestionIndex];
+
+      if (!isQuestionAnswered(currentQuestion)) return;
+
+      if (currentQuestionIndex < questions.length - 1) {
+        currentQuestionIndex++;
+        renderQuestion();
+      } else {
+        showResults();
+      }
+    });
+
+    renderQuestion();
+  </script>
+<script src="showResults.js"></script>
+</body>
+</html>

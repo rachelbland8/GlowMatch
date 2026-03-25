@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Skin Recommendations</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      font-family: Arial, sans-serif;
+    }
+
+    body {
+      margin: 0;
+      background: #f7f4f8;
+      color: #222;
+      padding: 24px;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      color: #666;
+      margin-bottom: 24px;
+      line-height: 1.5;
+    }
+
+    .profile-box,
+    .section-box {
+      background: white;
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.07);
+      margin-bottom: 24px;
+    }
+
+    .tag {
+      display: inline-block;
+      background: #f3d9e8;
+      color: #7a3560;
+      padding: 8px 12px;
+      border-radius: 999px;
+      margin: 6px 6px 0 0;
+      font-size: 14px;
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 12px;
+      margin-top: 16px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      border: none;
+      background: #c45d9c;
+      color: white;
+      padding: 12px 16px;
+      border-radius: 12px;
+      cursor: pointer;
+      font-size: 15px;
+    }
+
+    button.secondary {
+      background: #ececec;
+      color: #222;
+    }
+
+    button:disabled {
+      opacity: 0.65;
+      cursor: not-allowed;
+    }
+
+    .recommendation-card {
+      background: #fff8fc;
+      border: 2px solid #f0d4e6;
+      border-radius: 16px;
+      padding: 18px;
+      margin-top: 16px;
+    }
+
+    .brand {
+      font-size: 14px;
+      color: #777;
+      margin-bottom: 4px;
+    }
+
+    .product-name {
+      font-size: 22px;
+      font-weight: bold;
+      margin-bottom: 8px;
+    }
+
+    .score {
+      font-size: 14px;
+      color: #7a3560;
+      font-weight: bold;
+      margin-bottom: 12px;
+    }
+
+    .meta {
+      margin-top: 10px;
+      font-size: 14px;
+      color: #555;
+      line-height: 1.7;
+    }
+
+    .why {
+      background: white;
+      border-radius: 12px;
+      padding: 12px;
+      margin-top: 14px;
+      line-height: 1.6;
+    }
+
+    .empty-state {
+      background: #fff;
+      border-radius: 12px;
+      padding: 16px;
+      margin-top: 14px;
+      border: 1px solid #eee;
+    }
+
+    .loading {
+      color: #7a3560;
+      font-weight: bold;
+      margin-top: 12px;
+    }
+
+    .product-image {
+      width: 180px;
+      max-width: 100%;
+      border-radius: 14px;
+      display: block;
+      margin: 14px 0;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+      background: #f3f3f3;
+    }
+
+    pre {
+      background: #f6f6f6;
+      border-radius: 12px;
+      padding: 16px;
+      overflow: auto;
+      font-size: 14px;
+    }
+
+    #photoSection {
+      display: none;
+      margin-bottom: 18px;
+    }
+
+    #userPhoto {
+      width: 220px;
+      max-width: 100%;
+      border-radius: 16px;
+      display: block;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+    }
+
+    .small-note {
+      color: #777;
+      font-size: 14px;
+      margin-top: 10px;
+      line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Personalized Recommendations</h1>
+    <p class="subtitle">
+      This page shows one recommendation based mostly on your quiz answers and one recommendation based mostly on your photo analysis.
+    </p>
+
+    <div class="profile-box">
+      <h2>Your Profile</h2>
+
+      <div id="photoSection">
+        <img id="userPhoto" alt="Your uploaded photo" />
+      </div>
+
+      <div id="profileSummary"></div>
+      <div id="profileTags"></div>
+
+      <div class="btn-row">
+        <button id="loadSampleBtn">Load Sample Quiz Result</button>
+        <button id="showJsonBtn" class="secondary">Show Result JSON</button>
+        <button id="retakeBtn" class="secondary">Retake Quiz</button>
+      </div>
+    </div>
+
+    <div class="section-box">
+      <h2>Best Recommendation from Quiz</h2>
+      <p class="subtitle">This match is based on your skin type, concerns, preferences, and budget.</p>
+      <div id="quizRecommendation"></div>
+    </div>
+
+    <div class="section-box">
+      <h2>Best Recommendation from Photo</h2>
+      <p class="subtitle">This match is based on your photo-estimated tone, undertone, shine, dryness, and redness signals.</p>
+      <div id="photoRecommendation"></div>
+    </div>
+
+    <div id="jsonSection" class="section-box" style="display:none;">
+      <h2>Quiz Result Object</h2>
+      <pre id="resultJsonBox"></pre>
+    </div>
+  </div>
+
+  <script>
+    const API_URL = "http://localhost:3000/api/recommend";
+
+    const sampleQuizResult = {
+      primarySkinType: "combination",
+      scores: {
+        oily: 3,
+        dry: 2,
+        combination: 6,
+        normal: 1,
+        sensitive: 3
+      },
+      sensitivityLevel: "High",
+      concerns: ["redness", "dryness", "large_pores"],
+      shoppingFor: "makeup",
+      requestedCategory: "foundation",
+      finishPreference: "natural",
+      coveragePreference: "medium",
+      fragrancePreference: "fragrance_free",
+      budget: "15_30",
+      photoDataUrl: null,
+      toneBand: "medium",
+      undertone: "neutral",
+      cameraAnalysis: {
+        toneBand: "medium",
+        undertone: "neutral",
+        shineScore: 0.48,
+        drynessScore: 0.34,
+        rednessScore: 0.28,
+        confidence: 0.82
+      }
+    };
+
+    function formatLabel(value) {
+      if (!value) return "Not specified";
+      return value
+        .toString()
+        .replaceAll("_", " ")
+        .replace(/\b\w/g, (char) => char.toUpperCase());
+    }
+
+    function loadUserResult() {
+      const saved = localStorage.getItem("skinQuizResult");
+
+      if (saved) {
+        try {
+          return JSON.parse(saved);
+        } catch (error) {
+          console.error("Could not parse saved quiz result:", error);
+        }
+      }
+
+      return sampleQuizResult;
+    }
+
+    function renderProfile(userResult) {
+      const profileSummary = document.getElementById("profileSummary");
+      const profileTags = document.getElementById("profileTags");
+      const photoSection = document.getElementById("photoSection");
+      const userPhoto = document.getElementById("userPhoto");
+
+      if (userResult.photoDataUrl) {
+        userPhoto.src = userResult.photoDataUrl;
+        photoSection.style.display = "block";
+      } else {
+        photoSection.style.display = "none";
+      }
+
+      profileSummary.innerHTML = `
+        <p><strong>Skin Type:</strong> ${formatLabel(userResult.primarySkinType)}</p>
+        <p><strong>Sensitivity:</strong> ${formatLabel(userResult.sensitivityLevel)}</p>
+        <p><strong>Shopping For:</strong> ${formatLabel(userResult.shoppingFor)}</p>
+        <p><strong>Requested Category:</strong> ${formatLabel(userResult.requestedCategory)}</p>
+        <p><strong>Finish:</strong> ${formatLabel(userResult.finishPreference)}</p>
+        <p><strong>Coverage:</strong> ${formatLabel(userResult.coveragePreference)}</p>
+        <p><strong>Budget:</strong> ${formatLabel(userResult.budget)}</p>
+        <p><strong>Tone Band:</strong> ${formatLabel(userResult.toneBand)}</p>
+        <p><strong>Undertone:</strong> ${formatLabel(userResult.undertone)}</p>
+      `;
+
+      profileTags.innerHTML = "";
+
+      (userResult.concerns || []).forEach((concern) => {
+        const tag = document.createElement("span");
+        tag.className = "tag";
+        tag.textContent = formatLabel(concern);
+        profileTags.appendChild(tag);
+      });
+
+      if (userResult.cameraAnalysis) {
+        const cameraTags = [
+          `Shine: ${userResult.cameraAnalysis.shineScore}`,
+          `Dryness: ${userResult.cameraAnalysis.drynessScore}`,
+          `Redness: ${userResult.cameraAnalysis.rednessScore}`,
+          `Confidence: ${Math.round((userResult.cameraAnalysis.confidence || 0) * 100)}%`
+        ];
+
+        cameraTags.forEach((text) => {
+          const tag = document.createElement("span");
+          tag.className = "tag";
+          tag.textContent = text;
+          profileTags.appendChild(tag);
+        });
+      }
+    }
+
+    function buildRecommendationCard(product, title) {
+      if (!product) {
+        return `
+          <div class="empty-state">
+            <h3>No match found</h3>
+            <p>Try another product category, retake the quiz, or make sure your backend is returning products.</p>
+          </div>
+        `;
+      }
+
+      const imageHtml = product.imageUrl
+        ? `<img class="product-image" src="${product.imageUrl}" alt="${product.name}" />`
+        : "";
+
+      const reasons = Array.isArray(product.reasons) && product.reasons.length
+        ? product.reasons.join(" ")
+        : "This product scored well for your selected category and profile.";
+
+      const concernText = Array.isArray(product.concernsSupported) && product.concernsSupported.length
+        ? product.concernsSupported.map(formatLabel).join(", ")
+        : "Not specified";
+
+      const skinTypesText = Array.isArray(product.suitableSkinTypes) && product.suitableSkinTypes.length
+        ? product.suitableSkinTypes.map(formatLabel).join(", ")
+        : "Not specified";
+
+      return `
+        <div class="recommendation-card">
+          <div class="brand">${product.brand || "Unknown Brand"}</div>
+          <div class="product-name">${product.name || "Unknown Product"}</div>
+          <div class="score">Match Score: ${product.matchScore ?? "N/A"}</div>
+
+          ${imageHtml}
+
+          <div class="meta">
+            <div><strong>Category:</strong> ${formatLabel(product.category)}</div>
+            <div><strong>Finish:</strong> ${formatLabel(product.finish)}</div>
+            <div><strong>Coverage:</strong> ${formatLabel(product.coverage)}</div>
+            <div><strong>Budget:</strong> ${formatLabel(product.budgetRange)}</div>
+            <div><strong>Fragrance-Free:</strong> ${product.fragranceFree ? "Yes" : "No"}</div>
+            <div><strong>Best For Skin Types:</strong> ${skinTypesText}</div>
+            <div><strong>Supports Concerns:</strong> ${concernText}</div>
+          </div>
+
+          <div class="why">
+            <strong>Why it was recommended:</strong><br />
+            ${reasons}
+            <br /><br />
+            ${product.description || "No product description available."}
+          </div>
+
+          <div class="small-note">
+            ${title}
+          </div>
+        </div>
+      `;
+    }
+
+    function setLoadingState() {
+      document.getElementById("quizRecommendation").innerHTML = `
+        <div class="loading">Loading real quiz-based product recommendations...</div>
+      `;
+
+      document.getElementById("photoRecommendation").innerHTML = `
+        <div class="loading">Loading real photo-based product recommendations...</div>
+      `;
+    }
+
+    function setErrorState(message) {
+      const html = `
+        <div class="empty-state">
+          <h3>Could not load real products</h3>
+          <p>${message}</p>
+        </div>
+      `;
+
+      document.getElementById("quizRecommendation").innerHTML = html;
+      document.getElementById("photoRecommendation").innerHTML = html;
+    }
+
+    async function fetchRecommendations(userResult) {
+      const response = await fetch(API_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(userResult)
+      });
+
+      if (!response.ok) {
+        throw new Error(`Server returned ${response.status}`);
+      }
+
+      return response.json();
+    }
+
+    async function initializePage() {
+      const userResult = loadUserResult();
+      renderProfile(userResult);
+      document.getElementById("resultJsonBox").textContent = JSON.stringify(userResult, null, 2);
+
+      setLoadingState();
+
+      try {
+        const data = await fetchRecommendations(userResult);
+
+        document.getElementById("quizRecommendation").innerHTML = buildRecommendationCard(
+          data.quizBest,
+          "This recommendation came from your quiz answers."
+        );
+
+        document.getElementById("photoRecommendation").innerHTML = buildRecommendationCard(
+          data.photoBest,
+          "This recommendation came from your photo analysis."
+        );
+      } catch (error) {
+        console.error("Failed to load recommendations:", error);
+        setErrorState("Make sure your Node backend is running on port 3000 and the /api/recommend route is working.");
+      }
+    }
+
+    document.getElementById("loadSampleBtn").addEventListener("click", () => {
+      localStorage.setItem("skinQuizResult", JSON.stringify(sampleQuizResult));
+      initializePage();
+    });
+
+    document.getElementById("showJsonBtn").addEventListener("click", () => {
+      const section = document.getElementById("jsonSection");
+      section.style.display = section.style.display === "none" ? "block" : "none";
+    });
+
+    document.getElementById("retakeBtn").addEventListener("click", () => {
+      localStorage.removeItem("skinQuizResult");
+      window.location.href = "index.html";
+    });
+
+    initializePage();
+  </script>
+</body>
+</html>

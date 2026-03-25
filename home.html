@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>GlowMatch</title>
+
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #f7e6f1, #f2f6ff);
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .card {
+      background: white;
+      padding: 50px;
+      border-radius: 20px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+      text-align: center;
+      max-width: 500px;
+    }
+
+    h1 {
+      margin-bottom: 10px;
+      font-size: 36px;
+      color: #c45d9c;
+    }
+
+    p {
+      color: #555;
+      margin-bottom: 30px;
+      font-size: 18px;
+      line-height: 1.5;
+    }
+
+    button {
+      font-size: 18px;
+      padding: 14px 22px;
+      border-radius: 12px;
+      border: none;
+      background: #c45d9c;
+      color: white;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #a84a84;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="card">
+
+    <h1>GlowMatch</h1>
+
+    <p>
+      Find the best skincare and makeup for your skin using a short quiz
+      and photo analysis powered by AI.
+    </p>
+    <p>
+      Let's get you glowing!
+    </p>
+
+    <button id="startBtn">
+      Take the Quiz
+    </button>
+
+  </div>
+
+  <script>
+
+    document.getElementById("startBtn").addEventListener("click", () => {
+
+      window.location.href = "index.html";
+
+    });
+
+  </script>
+
+</body>
+</html>
