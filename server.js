@@ -6,8 +6,6 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
-
-// Serve static files, but do NOT automatically serve index.html at "/"
 app.use(express.static(__dirname, { index: false }));
 
 function normalizeText(value) {
@@ -319,53 +317,209 @@ async function fetchOpenBeautyFactsProducts(category) {
   }
 
   if (!contentType.includes("application/json")) {
-    throw new Error(
-      `Expected JSON but got ${contentType || "unknown"}: ${bodyText.slice(0, 120)}`
-    );
+    throw new Error(`Expected JSON but got ${contentType || "unknown"}: ${bodyText.slice(0, 120)}`);
   }
 
   return JSON.parse(bodyText);
 }
 
+function getFallbackProducts() {
+  return [
+    {
+      id: "f1",
+      brand: "CeraVe",
+      name: "Hydrating Facial Cleanser",
+      category: "cleanser",
+      suitableSkinTypes: ["dry", "normal", "sensitive", "combination"],
+      concernsSupported: ["dryness", "redness"],
+      fragranceFree: true,
+      finish: null,
+      coverage: null,
+      budgetRange: "15_30",
+      toneBands: ["light", "medium", "tan", "deep"],
+      undertones: ["warm", "cool", "neutral"],
+      photoTraits: { goodForShine: false, goodForDryness: true, goodForRedness: true },
+      imageUrl: null,
+      description: "Gentle cleanser for normal to dry skin."
+    },
+    {
+      id: "f2",
+      brand: "La Roche-Posay",
+      name: "Toleriane Double Repair Moisturizer",
+      category: "moisturizer",
+      suitableSkinTypes: ["dry", "normal", "sensitive", "combination"],
+      concernsSupported: ["dryness", "redness", "texture"],
+      fragranceFree: true,
+      finish: null,
+      coverage: null,
+      budgetRange: "15_30",
+      toneBands: ["light", "medium", "tan", "deep"],
+      undertones: ["warm", "cool", "neutral"],
+      photoTraits: { goodForShine: false, goodForDryness: true, goodForRedness: true },
+      imageUrl: null,
+      description: "Barrier-supporting daily moisturizer."
+    },
+    {
+      id: "f3",
+      brand: "e.l.f.",
+      name: "Soft Glam Satin Foundation",
+      category: "foundation",
+      suitableSkinTypes: ["normal", "combination", "dry"],
+      concernsSupported: ["dryness", "redness"],
+      fragranceFree: true,
+      finish: "natural",
+      coverage: "medium",
+      budgetRange: "15_30",
+      toneBands: ["light", "medium", "tan", "deep"],
+      undertones: ["warm", "cool", "neutral"],
+      photoTraits: { goodForShine: false, goodForDryness: true, goodForRedness: true },
+      imageUrl: null,
+      description: "Medium-coverage satin foundation with a natural look."
+    },
+    {
+      id: "f4",
+      brand: "Maybelline",
+      name: "Fit Me Matte + Poreless Foundation",
+      category: "foundation",
+      suitableSkinTypes: ["oily", "combination"],
+      concernsSupported: ["large_pores", "acne"],
+      fragranceFree: false,
+      finish: "matte",
+      coverage: "medium",
+      budgetRange: "15_30",
+      toneBands: ["light", "medium", "tan", "deep"],
+      undertones: ["warm", "cool", "neutral"],
+      photoTraits: { goodForShine: true, goodForDryness: false, goodForRedness: false },
+      imageUrl: null,
+      description: "Matte foundation aimed at normal to oily skin."
+    },
+    {
+      id: "f5",
+      brand: "NARS",
+      name: "Radiant Creamy Concealer",
+      category: "concealer",
+      suitableSkinTypes: ["normal", "dry", "combination"],
+      concernsSupported: ["redness", "dark_spots"],
+      fragranceFree: true,
+      finish: "natural",
+      coverage: "medium",
+      budgetRange: "30_50",
+      toneBands: ["light", "medium", "tan", "deep"],
+      undertones: ["warm", "cool", "neutral"],
+      photoTraits: { goodForShine: false, goodForDryness: true, goodForRedness: true },
+      imageUrl: null,
+      description: "Buildable concealer for brightening and spot coverage."
+    },
+    {
+      id: "f6",
+      brand: "Milk Makeup",
+      name: "Pore Eclipse Mattifying Primer",
+      category: "primer",
+      suitableSkinTypes: ["oily", "combination"],
+      concernsSupported: ["large_pores", "texture"],
+      fragranceFree: true,
+      finish: "matte",
+      coverage: null,
+      budgetRange: "30_50",
+      toneBands: ["light", "medium", "tan", "deep"],
+      undertones: ["warm", "cool", "neutral"],
+      photoTraits: { goodForShine: true, goodForDryness: false, goodForRedness: false },
+      imageUrl: null,
+      description: "Mattifying primer for shine and pores."
+    },
+    {
+      id: "f7",
+      brand: "Supergoop!",
+      name: "Unseen Sunscreen SPF 40",
+      category: "spf",
+      suitableSkinTypes: ["normal", "dry", "oily", "combination"],
+      concernsSupported: ["redness", "dark_spots"],
+      fragranceFree: true,
+      finish: "natural",
+      coverage: null,
+      budgetRange: "30_50",
+      toneBands: ["light", "medium", "tan", "deep"],
+      undertones: ["warm", "cool", "neutral"],
+      photoTraits: { goodForShine: false, goodForDryness: false, goodForRedness: true },
+      imageUrl: null,
+      description: "Invisible SPF for everyday wear."
+    },
+    {
+      id: "f8",
+      brand: "The Ordinary",
+      name: "Niacinamide 10% + Zinc 1%",
+      category: "serum",
+      suitableSkinTypes: ["oily", "combination", "normal"],
+      concernsSupported: ["redness", "large_pores", "texture"],
+      fragranceFree: true,
+      finish: null,
+      coverage: null,
+      budgetRange: "under_15",
+      toneBands: ["light", "medium", "tan", "deep"],
+      undertones: ["warm", "cool", "neutral"],
+      photoTraits: { goodForShine: true, goodForDryness: false, goodForRedness: true },
+      imageUrl: null,
+      description: "Popular serum for visible pores and uneven tone."
+    }
+  ];
+}
+
+function rankProducts(products, user) {
+  const quizSorted = products
+    .map((p) => {
+      const result = scoreQuizProduct(p, user);
+      return { ...p, matchScore: result.score, reasons: result.reasons };
+    })
+    .filter((p) => p.matchScore > 0)
+    .sort((a, b) => b.matchScore - a.matchScore);
+
+  const photoSorted = products
+    .map((p) => {
+      const result = scorePhotoProduct(p, user);
+      return { ...p, matchScore: result.score, reasons: result.reasons };
+    })
+    .filter((p) => p.matchScore > 0)
+    .sort((a, b) => b.matchScore - a.matchScore);
+
+  return {
+    quizBest: quizSorted[0] || null,
+    photoBest: photoSorted[0] || null
+  };
+}
+
 app.post("/api/recommend", async (req, res) => {
+  const user = req.body;
+
   try {
-    const user = req.body;
     const data = await fetchOpenBeautyFactsProducts(user.requestedCategory);
 
     const mappedProducts = (data.products || [])
       .map(mapOpenBeautyFactsProduct)
       .filter((p) => p.category === user.requestedCategory);
 
-    const quizSorted = mappedProducts
-      .map((p) => {
-        const result = scoreQuizProduct(p, user);
-        return { ...p, matchScore: result.score, reasons: result.reasons };
-      })
-      .filter((p) => p.matchScore > 0)
-      .sort((a, b) => b.matchScore - a.matchScore);
+    const ranked = rankProducts(mappedProducts, user);
 
-    const photoSorted = mappedProducts
-      .map((p) => {
-        const result = scorePhotoProduct(p, user);
-        return { ...p, matchScore: result.score, reasons: result.reasons };
-      })
-      .filter((p) => p.matchScore > 0)
-      .sort((a, b) => b.matchScore - a.matchScore);
-
-    res.json({
-      quizBest: quizSorted[0] || null,
-      photoBest: photoSorted[0] || null
+    return res.json({
+      ...ranked,
+      source: "live"
     });
   } catch (error) {
     console.error("Recommendation error:", error.message);
-    res.status(500).json({
-      error: "Failed to fetch real products.",
-      details: error.message
+
+    const fallbackProducts = getFallbackProducts().filter(
+      (p) => p.category === user.requestedCategory
+    );
+
+    const ranked = rankProducts(fallbackProducts, user);
+
+    return res.json({
+      ...ranked,
+      source: "fallback",
+      fallbackReason: error.message
     });
   }
 });
 
-// Make the homepage be home.html
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "home.html"));
 });
