@@ -1,9 +1,12 @@
 const express = require("express");
 const cors = require("cors");
+const path = require("path");
 
 const app = express();
+
 app.use(cors());
 app.use(express.json());
+app.use(express.static(__dirname));
 
 function normalizeText(value) {
   return (value || "").toLowerCase();
@@ -295,7 +298,6 @@ async function fetchOpenBeautyFactsProducts(category) {
     ].join(",")
   });
 
-  // Narrow the search by category word
   if (category) {
     params.set("search_terms", category);
   }
@@ -304,7 +306,7 @@ async function fetchOpenBeautyFactsProducts(category) {
 
   const response = await fetch(url, {
     headers: {
-      "User-Agent": "beauty-helper/1.0 (student project)"
+      "User-Agent": "glowmatch/1.0 (student project)"
     }
   });
 
@@ -327,7 +329,6 @@ async function fetchOpenBeautyFactsProducts(category) {
 app.post("/api/recommend", async (req, res) => {
   try {
     const user = req.body;
-
     const data = await fetchOpenBeautyFactsProducts(user.requestedCategory);
 
     const mappedProducts = (data.products || [])
@@ -365,6 +366,11 @@ app.post("/api/recommend", async (req, res) => {
   }
 });
 
-app.listen(3000, () => {
-  console.log("Server running on http://localhost:3000");
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "home.html"));
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
