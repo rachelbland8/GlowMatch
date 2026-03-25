@@ -6,7 +6,9 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static(__dirname));
+
+// Serve static files, but do NOT automatically serve index.html at "/"
+app.use(express.static(__dirname, { index: false }));
 
 function normalizeText(value) {
   return (value || "").toLowerCase();
@@ -160,8 +162,7 @@ function mapOpenBeautyFactsProduct(raw) {
         fragranceFree
     },
     imageUrl,
-    description: raw.generic_name || "Real product match from external catalog.",
-    ingredientsText
+    description: raw.generic_name || "Real product match from external catalog."
   };
 }
 
@@ -319,7 +320,7 @@ async function fetchOpenBeautyFactsProducts(category) {
 
   if (!contentType.includes("application/json")) {
     throw new Error(
-      `Expected JSON but got ${contentType || "unknown content type"}: ${bodyText.slice(0, 120)}`
+      `Expected JSON but got ${contentType || "unknown"}: ${bodyText.slice(0, 120)}`
     );
   }
 
@@ -353,9 +354,7 @@ app.post("/api/recommend", async (req, res) => {
 
     res.json({
       quizBest: quizSorted[0] || null,
-      photoBest: photoSorted[0] || null,
-      quizTop: quizSorted.slice(0, 5),
-      photoTop: photoSorted.slice(0, 5)
+      photoBest: photoSorted[0] || null
     });
   } catch (error) {
     console.error("Recommendation error:", error.message);
@@ -366,11 +365,12 @@ app.post("/api/recommend", async (req, res) => {
   }
 });
 
+// Make the homepage be home.html
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "home.html"));
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+app.listen(PORT, "0.0.0.0", () => {
   console.log(`Server running on port ${PORT}`);
 });
