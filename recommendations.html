@@ -410,11 +410,13 @@
         body: JSON.stringify(userResult)
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        throw new Error(`Server returned ${response.status}`);
+        throw new Error(data.details || data.error || `Server returned ${response.status}`);
       }
 
-      return response.json();
+      return data;
     }
 
     async function initializePage() {
@@ -438,7 +440,7 @@
         );
       } catch (error) {
         console.error("Failed to load recommendations:", error);
-        setErrorState("Make sure your Node backend is running on port 3000 and the /api/recommend route is working.");
+        setErrorState(error.message);
       }
     }
 
